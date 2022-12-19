@@ -82,6 +82,7 @@ class Coins:
             self.usingPersistentData = True 
             if self.debug:
                 print("persistent data:", str(self.user_variables_map["HISTORICAL_PRICE_MAP"]))
+            
         
     def getDatabaseValues(self):   
         
@@ -89,11 +90,15 @@ class Coins:
             print("-------- Getting Database Values ---------")
         
         for p in self.pages.obj:
-            symbol = str(p.properties.get(self.tickerName))
-            price_string = str(p.properties.get(self.currentPriceName))
-            price = float(price_string)                   
-            
-            self.user_variables_map["NOTION_ENTRIES"].update({symbol: {"page":p.id,"price":price, "update":False}})   
+            try:
+                symbol = str(p.properties.get(self.tickerName))
+                price_string = str(p.properties.get(self.currentPriceName))
+                price = float(price_string)
+            except ValueError:
+                if self.debug:
+                    print('Could not get property value from page. This is probably a blank row')
+                continue   
+            self.user_variables_map["NOTION_ENTRIES"].update({symbol: {"page":p.id,"price":price, "update":False}})                       
         
     def getCryptoPrices(self):
         """
@@ -133,6 +138,18 @@ class Coins:
                 print(str(response))   
                 time.sleep(1 * 60)
                 
+    def getStatusChange(self, historicalPrice, currentPrice):
+        print("---- in getStatusChange ------")
+        if float(currentPrice) == float(historicalPrice):  
+            status = "No Change"       
+        elif float(currentPrice) < float(historicalPrice):
+            status = "Falling"
+        elif float(currentPrice) > float(historicalPrice):
+            status = "Rising"
+        else:
+            status = "Calculating"
+        return status                
+                
     def getCheckpointStatus(self, currentPrice, historicalPrices):
         status = "Calculating"
         
@@ -141,8 +158,8 @@ class Coins:
         
         if self.debug:
          print("---- getting checkpoint status ------")
-            
         
+        print("---- calling getHistoricalPrice ------")
         historical_price = self.getHistoricalPrice(historicalPrices)
         
         if self.debug:
@@ -152,20 +169,18 @@ class Coins:
             print("Historical price is: ", historical_price)
             print("Current price is: ", currentPrice)
         
-        #finally get status
+        print("---- calling getPercentChange ------")
         change = self.getPercentChange(historicalPrices, currentPrice)
         
         if self.debug:
-            print(str(change) + " %")
+            print("12 hour percent change: " + str(change[0]) + " %")
+            print("24 hour percent change: " + str(change[1]) + " %")
         
-        if float(currentPrice) == float(historical_price):  
-            status = "No Change"       
-        elif float(currentPrice) < float(historical_price):
-            status = "Falling"
-        elif float(currentPrice) > float(historical_price):
-            status = "Rising"
-        else:
-            status = "Calculating"
+        status_12 = self.getStatusChange(historical_price[0], currentPrice)  
+        status_24 = self.getStatusChange(historical_price[1], currentPrice)   
+        
+        print("---- returning status_12, status_24 ------")
+        status = (status_12, status_24)
         
         return (change, status)
         
@@ -173,70 +188,66 @@ class Coins:
         symbolHistory = {symbol:historicalPrices}
         self.user_variables_map["HISTORICAL_PRICE_MAP"].update(symbolHistory)    
         
+    def getHistoricalHour(self, number):
+        originalNumber = number
+        if number == 24:
+            number = 23
+            if self.debug:
+                print("---- Setting 24 hour to 23 ------") 
+                print("---- Original 24 hour would be:", (datetime.now() - timedelta(hours=originalNumber)).hour) 
+        historical_time = datetime.now() - timedelta(hours=number)
+        if self.debug:
+            print("---- This hour is: ", datetime.now().hour)    
+            print("---- Historical hour is: ", historical_time.hour)
+        return str(historical_time.hour)
+        
     def getHistoricalPrice(self, historicalPrices):        
-        thisHour = datetime.now().hour
-        historical_time = datetime.now() - timedelta(hours=24)
-        historical_hour = historical_time.hour
+        historicalHour24 = self.getHistoricalHour(24)
+        historicalHour12 = self.getHistoricalHour(12)
         
         if self.debug:
-            print("Historical Hour is: ", str(historical_hour))
-            print("historicalPrices are: ", historicalPrices)
-            print("historical hour type is: ", type(historical_hour))
+            print("Historical 12 Hour is: ", historicalHour12)
+            print("Historical 24 Hour is: ", historicalHour24)
             
         try:
-            entry = historicalPrices[str(historical_hour)]
-            print("entry is: ", str(entry))
-            print("entry type is: ", type(entry))
-        
-            historicalPrice = entry
+            historicalPrice_24 = historicalPrices[historicalHour24]
+            historicalPrice_12 = historicalPrices[historicalHour12]
             if self.debug:
-                print("Historical price is: ", historicalPrice)
+                print("Price 12 hours ago was:  ", str(historicalPrice_12))
+                print("Price 24 hours ago was: ", str(historicalPrice_24))
+            
         except Exception as e:
             print('-------- in exception ---------')
-            print(f"[historicalPrices]: {e}")
+            print(f"Error getting hostorical prices: {e}")
                     
-        return historicalPrice
+        return (historicalPrice_12,historicalPrice_24)
         
-    def getPercentChange(self, historicalPrices, currentPrice):
-        if self.debug:
-            print("..... In getPercentChange ..... ")
-        
-        thisHour = datetime.now().hour
-        print("This hour is: ", str(thisHour))
-        historical_time = datetime.now() - timedelta(hours=24)
-        print("Historical time is: ", str(historical_time))
-        historical_hour = historical_time.hour
-        print("Historical hour is: ", str(historical_hour))
-        historicalPrice = self.getHistoricalPrice(historicalPrices)
-        print("Historical price is: ", historicalPrice)
-        
-        # try:
-        #     entry = historicalPrices[str(historical_hour)]
-        #     print("entry is: ", str(entry))
-        #     print("entry type is: ", type(entry))
-        #
-        #     historicalPrice = entry
-        #     if self.debug:
-        #         print("Historical price is: ", historicalPrice)
-        # except Exception as e:
-        #     print(f"[historicalPrices]: {e}")
-    
-        
+    def calculatePercent(self, historicalPrice, currentPrice):
         try:
             if float(historicalPrice) == float(currentPrice):
-                if self.debug:
-                    print("-- No change --")
                 percent = 0.00
             else:
                 percent = round((float(currentPrice) - float(historicalPrice)) / abs(float(historicalPrice)) * 100, 2)
-                if self.debug:
-                    print("-- CHANGE --")
         except ZeroDivisionError:
             print("-- ZeroDivisionError --")
             percent = 0.00        
         
         return percent
             
+    def getPercentChange(self, historicalPrices, currentPrice):
+        if self.debug:
+            print("..... In getPercentChange ..... ")
+        
+        historicalHour12 = self.getHistoricalHour(12)
+        historicalHour24 = self.getHistoricalHour(24)
+        
+        historicalPrice_12 = historicalPrices[historicalHour12]
+        historicalPrice_24 = historicalPrices[historicalHour24]
+        
+        historicalChange_12 = self.calculatePercent(historicalPrice_12, currentPrice)
+        historicalChange_24 = self.calculatePercent(historicalPrice_24, currentPrice)
+        
+        return(historicalChange_12, historicalChange_24)
         
     def setHistoricalPrice(self, historicalPrices, currentPrice):
         thisHour = datetime.now().hour
@@ -263,30 +274,49 @@ class Coins:
             symbol = str(page.obj.properties.get(self.tickerName))   
                                 
             history = self.user_variables_map["HISTORICAL_PRICE_MAP"][symbol]
-            checkpoint = self.getCheckpointStatus(coinPrice, history)
-            status = checkpoint[1]
-            change = round(checkpoint[0], 2)
+            checkpoint = self.getCheckpointStatus(coinPrice, history) #Returns tuple of a tuple((0.0, 0.0), ('No Change', 'No Change'))
+            if self.debug:
+                print("checkpoint", str(checkpoint))
+                
+            checkpointChange = checkpoint[0]
+            checkpointStatus = checkpoint[1]   
+            if self.debug:
+                print("checkpointChange", str(checkpointChange))
+                print("checkpointStatus", str(checkpointStatus))
+            
+            change_12 = round(checkpointChange[0], 2)
+            change_24 = round(checkpointChange[1], 2)
+            if self.debug:
+                print("change_12", str(change_12))
+                print("change_24", str(change_24))
+            
+            status_12 = checkpointStatus[0]
+            status_24 = checkpointStatus[1]
+            if self.debug:
+                print("status_12", str(status_12))
+                print("status_24", str(status_24))
     
             #set a new historical price for this hour
             #get the historical price    
             if self.debug:
                 print("        ")
-                print("        ")
                 print("----- Historial Price BEFORE Update")
                 print(str(history))
-                print("        ")
                 print("        ")
             self.setHistoricalPrice(history, coinPrice)
             if self.debug:
                 print("        ")
-                print("        ")
             self.updateHistoryForSymbol(symbol, history)   
             if self.debug:
                 print("----- Historial AFTER Update")
-                print(str(self.user_variables_map["HISTORICAL_PRICE_MAP"][symbol]))             
+                print(str(self.user_variables_map["HISTORICAL_PRICE_MAP"][symbol]))       
+                      
             
-            page.page_update(properties={"Change(24h)":PropertyValue.create("rich_text", str(change) + "%"),"24h Trend":PropertyValue.create("status", status),self.currentPriceName: PropertyValue.create("number", float(coinPrice))})
-            print("------ Updating " + symbol + " to " + str(coinPrice) + " with status " + status)
+            page.page_update(properties={"Change(12h)":PropertyValue.create("rich_text", str(change_12) + "%"),"12h Trend":PropertyValue.create("status", status_12),
+            "Change(24h)":PropertyValue.create("rich_text", str(change_24) + "%"),"24h Trend":PropertyValue.create("status", status_24),
+            self.currentPriceName: PropertyValue.create("number", float(coinPrice))})
+            
+            print("------ Updating " + symbol + " to " + str(coinPrice) + " with 12 hour status: " + status_12 + " and 24 hour status: " + status_24)
         else:
             page.page_update(properties={"24h Trend":PropertyValue.create("status", "Unlisted")})
             print("------ Not Updating " + str(page.obj.properties.get(self.tickerName)))
