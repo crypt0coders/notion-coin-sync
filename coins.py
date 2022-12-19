@@ -82,6 +82,7 @@ class Coins:
             self.usingPersistentData = True 
             if self.debug:
                 print("persistent data:", str(self.user_variables_map["HISTORICAL_PRICE_MAP"]))
+            
         
     def getDatabaseValues(self):   
         
@@ -89,11 +90,15 @@ class Coins:
             print("-------- Getting Database Values ---------")
         
         for p in self.pages.obj:
-            symbol = str(p.properties.get(self.tickerName))
-            price_string = str(p.properties.get(self.currentPriceName))
-            price = float(price_string)                   
-            
-            self.user_variables_map["NOTION_ENTRIES"].update({symbol: {"page":p.id,"price":price, "update":False}})   
+            try:
+                symbol = str(p.properties.get(self.tickerName))
+                price_string = str(p.properties.get(self.currentPriceName))
+                price = float(price_string)
+            except ValueError:
+                if self.debug:
+                    print('Could not get property value from page. This is probably a blank row')
+                continue   
+            self.user_variables_map["NOTION_ENTRIES"].update({symbol: {"page":p.id,"price":price, "update":False}})                       
         
     def getCryptoPrices(self):
         """
@@ -183,13 +188,20 @@ class Coins:
         symbolHistory = {symbol:historicalPrices}
         self.user_variables_map["HISTORICAL_PRICE_MAP"].update(symbolHistory)    
         
-    def getHistoricalHour(self, number):    
-        thisHour = datetime.now().hour
+    def getHistoricalHour(self, number):
+        originalNumber = number
+        if number == 24:
+            number = 23
+            if self.debug:
+                print("---- Setting 24 hour to 23 ------") 
+                print("---- Original 24 hour would be:", (datetime.now() - timedelta(hours=originalNumber)).hour) 
         historical_time = datetime.now() - timedelta(hours=number)
+        if self.debug:
+            print("---- This hour is: ", datetime.now().hour)    
+            print("---- Historical hour is: ", historical_time.hour)
         return str(historical_time.hour)
         
     def getHistoricalPrice(self, historicalPrices):        
-        thisHour = datetime.now().hour
         historicalHour24 = self.getHistoricalHour(24)
         historicalHour12 = self.getHistoricalHour(12)
         
@@ -226,7 +238,6 @@ class Coins:
         if self.debug:
             print("..... In getPercentChange ..... ")
         
-        thisHour = datetime.now().hour
         historicalHour12 = self.getHistoricalHour(12)
         historicalHour24 = self.getHistoricalHour(24)
         
