@@ -69,15 +69,18 @@ class Coins:
             print("[Error]: while writing persistent data", er)
             
     def initializepersistentData(self):
-        file_exists = exists(self.getDataPath())
         file_path = self.getDataPath()
+        file_exists = exists(file_path)
         if self.persistData == True and file_exists:
             if self.debug:
-                print("------ historical coin prices file exists .... attemptint to read it now----------")
+                print("------ Persistent coin prices file exists .... attemptint to read it now----------")
             self.readpersistentData()    
             self.usingPersistentData = True 
             if self.debug:
                 print("persistent data:", str(self.user_variables_map["HISTORICAL_PRICE_MAP"]))
+        else:
+            if self.debug:
+                print("------ Persistent coin prices file not found at path " + file_path)        
             
         
     def getDatabaseValues(self):   
@@ -254,7 +257,7 @@ class Coins:
             
     def initializeHistoricalPrices(self, currentPrice):
         if self.debug:
-            print("------ Initializing Historical Prices ----------")
+            print("------ Creating Initial Historical Prices ----------")
         historicalPrices = {}
         hours = 24
         while hours > -1:
