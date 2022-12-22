@@ -21,7 +21,6 @@ class Coins:
         self.user_variables_map["NOTION_ENTRIES"] = {}
         self.no = Notion(token=self.user_variables_map["NOTION_SECRET_TOKEN"])
         self.database = self.no.databases.get(self.user_variables_map["DATABASE_ID"])  # retrieve database data (not content) and create object
-        self.pages = self.database.db_query()
         self.apiURL = self.user_variables_map["PRICE_API"]
         self.tickerName = self.user_variables_map["TICKER_SYMBOL_NAME"]
         self.currentPriceName = self.user_variables_map["CURRENT_PRICE_NAME"]
@@ -31,6 +30,12 @@ class Coins:
         self.dataPath = self.user_variables_map["DATA_VOLUME"]
         self.initializepersistentData()
         self.usingPersistentData = False
+        
+        
+    def queryNotionDatabase(self):
+        if self.debug:
+            print("------ Querying Notion Database----------")
+        self.pages = self.database.db_query()
         
     def writepersistentData(self):
         try:
@@ -43,12 +48,8 @@ class Coins:
     def getDataPath(self):
         last_char = self.dataPath[-1]
         if last_char == '/':
-            if self.debug:
-                print("------ ending slash detected----------")
             file_path = self.dataPath + 'coin_prices.json'
         else:
-            if self.debug:
-                print("------ ending slash NOT detected----------")
             file_path = self.dataPath + '/' + 'coin_prices.json'
         return file_path    
         
@@ -58,9 +59,7 @@ class Coins:
                 print("Reading persistent Data")
             with open(self.getDataPath()) as data:
                 mapData = json.load(data)
-            
-            print(type(mapData))
-            
+                        
             self.user_variables_map["HISTORICAL_PRICE_MAP"] = mapData
             
             if self.debug:
@@ -70,42 +69,43 @@ class Coins:
             print("[Error]: while writing persistent data", er)
             
     def initializepersistentData(self):
-        file_exists = exists(self.getDataPath())
         file_path = self.getDataPath()
-        print("------ file_path ----------", file_path)
-        print("------ self.persistData ----------", file_path)
-        print("------ file_exists ----------", str(file_exists))
+        file_exists = exists(file_path)
         if self.persistData == True and file_exists:
             if self.debug:
-                print("------ historical coin prices file exists .... attemptint to read it now----------")
+                print("------ Persistent coin prices file exists .... attemptint to read it now----------")
             self.readpersistentData()    
             self.usingPersistentData = True 
             if self.debug:
                 print("persistent data:", str(self.user_variables_map["HISTORICAL_PRICE_MAP"]))
+        else:
+            if self.debug:
+                print("------ Persistent coin prices file not found at path " + file_path)        
             
         
     def getDatabaseValues(self):   
+        self.queryNotionDatabase()    
         
         if self.debug:
-            print("-------- Getting Database Values ---------")
-        
+            print("-------- Parsing Database Values ---------")
         for p in self.pages.obj:
             try:
                 symbol = str(p.properties.get(self.tickerName))
                 price_string = str(p.properties.get(self.currentPriceName))
                 price = float(price_string)
+                if self.debug:
+                    print("Found " + symbol + " in database with price " + price_string)
             except ValueError:
                 if self.debug:
-                    print('Could not get property value from page. This is probably a blank row')
+                    print('Could not get property value from page. This could be a blank row or price is empty.')
                 continue   
-            self.user_variables_map["NOTION_ENTRIES"].update({symbol: {"page":p.id,"price":price, "update":False}})                       
+            self.user_variables_map["NOTION_ENTRIES"].update({symbol: {"page":p.id,"price":price, "update":False}})    
+            if self.debug:
+                print("Updated NOTION_ENTRIES MAP to ", self.user_variables_map["NOTION_ENTRIES"])                   
         
     def getCryptoPrices(self):
-        """
-        Using Binance.US API.
-        Ref: https://github.com/binance/binance-api-postman
-        """
-        print(" --------Getting crypto prices ----------")
+        if self.debug:
+            print(" --------Getting crypto prices ----------")
         
         for name, data in self.user_variables_map["NOTION_ENTRIES"].items():
             url = f"https://" + self.apiURL + "/api/v3/avgPrice?"\
@@ -126,8 +126,8 @@ class Coins:
                 
                 data['price'] = price
                 data['update'] = True
-                print(name + " price from api is " + price)
-                if self.debug: 
+                if self.debug:
+                    print(name + " price from api is " + price)
                     print(url)
                     print("pageID is " + data['page'])
             elif response.status_code == 400:
@@ -139,7 +139,8 @@ class Coins:
                 time.sleep(1 * 60)
                 
     def getStatusChange(self, historicalPrice, currentPrice):
-        print("---- in getStatusChange ------")
+        if self.debug:
+            print("---- in getStatusChange ------")
         if float(currentPrice) == float(historicalPrice):  
             status = "No Change"       
         elif float(currentPrice) < float(historicalPrice):
@@ -157,9 +158,8 @@ class Coins:
         #    historicalPrices = self.initializeHistoricalPrices(currentPrice)
         
         if self.debug:
-         print("---- getting checkpoint status ------")
-        
-        print("---- calling getHistoricalPrice ------")
+            print("---- getting checkpoint status ------")
+
         historical_price = self.getHistoricalPrice(historicalPrices)
         
         if self.debug:
@@ -169,7 +169,6 @@ class Coins:
             print("Historical price is: ", historical_price)
             print("Current price is: ", currentPrice)
         
-        print("---- calling getPercentChange ------")
         change = self.getPercentChange(historicalPrices, currentPrice)
         
         if self.debug:
@@ -179,7 +178,8 @@ class Coins:
         status_12 = self.getStatusChange(historical_price[0], currentPrice)  
         status_24 = self.getStatusChange(historical_price[1], currentPrice)   
         
-        print("---- returning status_12, status_24 ------")
+        if self.debug:
+            print("---- returning status_12, status_24 ------")
         status = (status_12, status_24)
         
         return (change, status)
@@ -251,12 +251,13 @@ class Coins:
         
     def setHistoricalPrice(self, historicalPrices, currentPrice):
         thisHour = datetime.now().hour
-        print("-- Setting Historical Price for hour " + str(thisHour) + " to price " + currentPrice)
+        if self.debug:
+            print("-- Setting Historical Price for hour " + str(thisHour) + " to price " + currentPrice)
         historicalPrices[thisHour] = currentPrice        
             
     def initializeHistoricalPrices(self, currentPrice):
         if self.debug:
-            print("------ Initializing Historical Prices ----------")
+            print("------ Creating Initial Historical Prices ----------")
         historicalPrices = {}
         hours = 24
         while hours > -1:
