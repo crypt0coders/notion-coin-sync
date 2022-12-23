@@ -189,20 +189,14 @@ class Coins:
         self.user_variables_map["HISTORICAL_PRICE_MAP"].update(symbolHistory)    
         
     def getHistoricalHour(self, number):
-        originalNumber = number
-        if number == 24:
-            number = 23
-            if self.debug:
-                print("---- Setting 24 hour to 23 ------") 
-                print("---- Original 24 hour would be:", (datetime.now() - timedelta(hours=originalNumber)).hour) 
         historical_time = datetime.now() - timedelta(hours=number)
         if self.debug:
             print("---- This hour is: ", datetime.now().hour)    
-            print("---- Historical hour is: ", historical_time.hour)
+            print("---- Historical hour was: ", historical_time.hour)
         return str(historical_time.hour)
         
     def getHistoricalPrice(self, historicalPrices):        
-        historicalHour24 = self.getHistoricalHour(24)
+        historicalHour24 = self.getHistoricalHour(23)
         historicalHour12 = self.getHistoricalHour(12)
         
         if self.debug:
@@ -239,7 +233,7 @@ class Coins:
             print("..... In getPercentChange ..... ")
         
         historicalHour12 = self.getHistoricalHour(12)
-        historicalHour24 = self.getHistoricalHour(24)
+        historicalHour24 = self.getHistoricalHour(23)
         
         historicalPrice_12 = historicalPrices[historicalHour12]
         historicalPrice_24 = historicalPrices[historicalHour24]
