@@ -14,7 +14,6 @@ ENV DEBUG false
 ENV PERSIST_DATA false
 ENV DATA_VOLUME /database
 
-RUN pip3 install pytion
 RUN pip3 install -r requirements.txt
 
 ENTRYPOINT ["/start.sh"]
