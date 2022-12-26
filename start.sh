@@ -15,6 +15,8 @@ sed -i -e "s/DEBUG:.*/DEBUG: ${DEBUG}/g" user_variables.yml
 sed -i -e "s/PERSIST_DATA:.*/PERSIST_DATA: ${PERSIST_DATA}/g" user_variables.yml
 sed -i -e "s/DATA_VOLUME:.*/DATA_VOLUME: ${DATA_VOLUME}/g" user_variables.yml
 
+if [ "${DATA_VOLUME}" == true ] ; then mkdir ${DATA_VOLUME}
+
 #start script
 python3 coins.py
 

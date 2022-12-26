@@ -4,5 +4,6 @@ PRICE_API: api.binance.us
 CURRENT_PRICE_NAME: Current Price
 TICKER_SYMBOL_NAME: Symbol
 PERSIST_DATA: False
-DEBUG: False
+DEBUG: True
 DATA_VOLUME: /database
+CREATE_VOLUME: False

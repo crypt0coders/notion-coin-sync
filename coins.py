@@ -195,11 +195,18 @@ class Coins:
             print("---- Historical hour was: ", historical_time.hour)
         return str(historical_time.hour)
         
-    def getHistoricalPrice(self, historicalPrices):        
+    def getHistoricalPrice(self, historicalPrices): 
+        if self.debug:
+            print("---------------- HISTORICAL PRICES ------------------")
+            print(historicalPrices)
+            print("-----------------------------------------------------")
+               
         historicalHour24 = self.getHistoricalHour(23)
         historicalHour12 = self.getHistoricalHour(12)
         
         if self.debug:
+            print("Historical 12 Hour TYPE is: ", type(historicalHour12))
+            print("Historical 24 Hour TYPE is: ", type(historicalHour24))
             print("Historical 12 Hour is: ", historicalHour12)
             print("Historical 24 Hour is: ", historicalHour24)
             
@@ -207,12 +214,14 @@ class Coins:
             historicalPrice_24 = historicalPrices[historicalHour24]
             historicalPrice_12 = historicalPrices[historicalHour12]
             if self.debug:
-                print("Price 12 hours ago was:  ", str(historicalPrice_12))
-                print("Price 24 hours ago was: ", str(historicalPrice_24))
+                print("Historical 12 Price TYPE is: ", type(historicalPrice_12))
+                print("Historical 24 Price TYPE is: ", type(historicalPrice_24))
+                print("Price 12 hours ago was:  ", historicalPrice_12)
+                print("Price 24 hours ago was: ", historicalPrice_24)
             
         except Exception as e:
             print('-------- in exception ---------')
-            print(f"Error getting hostorical prices: {e}")
+            print(f"Error getting historical prices: {e}")
                     
         return (historicalPrice_12,historicalPrice_24)
         
