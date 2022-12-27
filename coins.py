@@ -256,7 +256,7 @@ class Coins:
         thisHour = datetime.now().hour
         if self.debug:
             print("-- Setting Historical Price for hour " + str(thisHour) + " to price " + currentPrice)
-        historicalPrices[thisHour] = currentPrice        
+        historicalPrices[str(thisHour)] = currentPrice        
             
     def initializeHistoricalPrices(self, currentPrice):
         if self.debug:
