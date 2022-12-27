@@ -14,8 +14,13 @@ sed -i -e "s/TICKER_SYMBOL_NAME:.*/TICKER_SYMBOL_NAME: ${TICKER_SYMBOL_NAME}/g" 
 sed -i -e "s/DEBUG:.*/DEBUG: ${DEBUG}/g" user_variables.yml
 sed -i -e "s/PERSIST_DATA:.*/PERSIST_DATA: ${PERSIST_DATA}/g" user_variables.yml
 sed -i -e "s/DATA_VOLUME:.*/DATA_VOLUME: ${DATA_VOLUME}/g" user_variables.yml
+sed -i -e "s/CREATE_VOLUME:.*/CREATE_VOLUME: ${CREATE_VOLUME}/g" user_variables.yml
 
-if [ "${DATA_VOLUME}" == true ] ; then mkdir ${DATA_VOLUME}
+
+if [ "${CREATE_VOLUME}" = true ] || [ "${CREATE_VOLUME}" == "true" ] || [ "${CREATE_VOLUME}" == "True" ] ; then 
+  echo "creating data volume"
+  mkdir -p "${DATA_VOLUME}"
+fi
 
 #start script
 python3 coins.py

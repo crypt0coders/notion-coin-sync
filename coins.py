@@ -262,7 +262,7 @@ class Coins:
         if self.debug:
             print("------ Creating Initial Historical Prices ----------")
         historicalPrices = {}
-        hours = 24
+        hours = 23
         while hours > -1:
             historicalPrices[str(hours)] = currentPrice
             hours = hours - 1
