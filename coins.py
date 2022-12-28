@@ -31,7 +31,6 @@ class Coins:
         self.initializepersistentData()
         self.usingPersistentData = False
         
-        
     def queryNotionDatabase(self):
         if self.debug:
             print("------ Querying Notion Database----------")
@@ -82,7 +81,6 @@ class Coins:
             if self.debug:
                 print("------ Persistent coin prices file not found at path " + file_path)        
             
-        
     def getDatabaseValues(self):   
         self.queryNotionDatabase()    
         
@@ -153,33 +151,20 @@ class Coins:
                 
     def getCheckpointStatus(self, currentPrice, historicalPrices):
         status = "Calculating"
-        
-        #if not historicalPrices:
-        #    historicalPrices = self.initializeHistoricalPrices(currentPrice)
-        
-        if self.debug:
-            print("---- getting checkpoint status ------")
 
         historical_price = self.getHistoricalPrice(historicalPrices)
-        
-        if self.debug:
-            print("..... In getCheckpointStatus and got historical price ..... ")
-        
-        if self.debug:
-            print("Historical price is: ", historical_price)
-            print("Current price is: ", currentPrice)
         
         change = self.getPercentChange(historicalPrices, currentPrice)
         
         if self.debug:
+            print("Historical price is: ", historical_price)
+            print("Current price is: ", currentPrice)
             print("12 hour percent change: " + str(change[0]) + " %")
             print("24 hour percent change: " + str(change[1]) + " %")
         
         status_12 = self.getStatusChange(historical_price[0], currentPrice)  
         status_24 = self.getStatusChange(historical_price[1], currentPrice)   
         
-        if self.debug:
-            print("---- returning status_12, status_24 ------")
         status = (status_12, status_24)
         
         return (change, status)
@@ -189,20 +174,19 @@ class Coins:
         self.user_variables_map["HISTORICAL_PRICE_MAP"].update(symbolHistory)    
         
     def getHistoricalHour(self, number):
-        originalNumber = number
-        if number == 24:
-            number = 23
-            if self.debug:
-                print("---- Setting 24 hour to 23 ------") 
-                print("---- Original 24 hour would be:", (datetime.now() - timedelta(hours=originalNumber)).hour) 
         historical_time = datetime.now() - timedelta(hours=number)
         if self.debug:
             print("---- This hour is: ", datetime.now().hour)    
-            print("---- Historical hour is: ", historical_time.hour)
+            print("---- Historical hour was: ", historical_time.hour)
         return str(historical_time.hour)
         
-    def getHistoricalPrice(self, historicalPrices):        
-        historicalHour24 = self.getHistoricalHour(24)
+    def getHistoricalPrice(self, historicalPrices): 
+        if self.debug:
+            print("---------------- HISTORICAL PRICES ------------------")
+            print(historicalPrices)
+            print("-----------------------------------------------------")
+               
+        historicalHour24 = self.getHistoricalHour(23)
         historicalHour12 = self.getHistoricalHour(12)
         
         if self.debug:
@@ -213,12 +197,12 @@ class Coins:
             historicalPrice_24 = historicalPrices[historicalHour24]
             historicalPrice_12 = historicalPrices[historicalHour12]
             if self.debug:
-                print("Price 12 hours ago was:  ", str(historicalPrice_12))
-                print("Price 24 hours ago was: ", str(historicalPrice_24))
+                print("Price 12 hours ago was:  ", historicalPrice_12)
+                print("Price 24 hours ago was: ", historicalPrice_24)
             
         except Exception as e:
             print('-------- in exception ---------')
-            print(f"Error getting hostorical prices: {e}")
+            print(f"Error getting historical prices: {e}")
                     
         return (historicalPrice_12,historicalPrice_24)
         
@@ -234,12 +218,9 @@ class Coins:
         
         return percent
             
-    def getPercentChange(self, historicalPrices, currentPrice):
-        if self.debug:
-            print("..... In getPercentChange ..... ")
-        
+    def getPercentChange(self, historicalPrices, currentPrice):        
         historicalHour12 = self.getHistoricalHour(12)
-        historicalHour24 = self.getHistoricalHour(24)
+        historicalHour24 = self.getHistoricalHour(23)
         
         historicalPrice_12 = historicalPrices[historicalHour12]
         historicalPrice_24 = historicalPrices[historicalHour24]
@@ -253,13 +234,13 @@ class Coins:
         thisHour = datetime.now().hour
         if self.debug:
             print("-- Setting Historical Price for hour " + str(thisHour) + " to price " + currentPrice)
-        historicalPrices[thisHour] = currentPrice        
+        historicalPrices[str(thisHour)] = currentPrice        
             
     def initializeHistoricalPrices(self, currentPrice):
         if self.debug:
             print("------ Creating Initial Historical Prices ----------")
         historicalPrices = {}
-        hours = 24
+        hours = 23
         while hours > -1:
             historicalPrices[str(hours)] = currentPrice
             hours = hours - 1
@@ -276,23 +257,24 @@ class Coins:
                                 
             history = self.user_variables_map["HISTORICAL_PRICE_MAP"][symbol]
             checkpoint = self.getCheckpointStatus(coinPrice, history) #Returns tuple of a tuple((0.0, 0.0), ('No Change', 'No Change'))
-            if self.debug:
-                print("checkpoint", str(checkpoint))
                 
             checkpointChange = checkpoint[0]
             checkpointStatus = checkpoint[1]   
             if self.debug:
+                print("checkpoint", str(checkpoint))
                 print("checkpointChange", str(checkpointChange))
                 print("checkpointStatus", str(checkpointStatus))
             
             change_12 = round(checkpointChange[0], 2)
             change_24 = round(checkpointChange[1], 2)
+            
             if self.debug:
                 print("change_12", str(change_12))
                 print("change_24", str(change_24))
             
             status_12 = checkpointStatus[0]
             status_24 = checkpointStatus[1]
+            
             if self.debug:
                 print("status_12", str(status_12))
                 print("status_24", str(status_24))
